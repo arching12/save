@@ -15,6 +15,9 @@
       --line-strong:#bcc4cc;
       --text:#222831;
       --muted:#69707c;
+      --deep:#2f3c4c;
+      --accent:#60758d;
+      --accent-soft:#e7edf2;
       --shadow:0 14px 34px rgba(22, 28, 36, .07);
       --radius-xl:24px;
       --radius-lg:18px;
@@ -218,6 +221,10 @@
       line-height:1.7;
     }
 
+    .status{
+      display:none;
+    }
+
     .preview-shell{
       flex:1;
       border-radius:22px;
@@ -232,6 +239,7 @@
     .preview-bar{
       display:flex;
       align-items:center;
+      justify-content:space-between;
       gap:12px;
       padding:12px 16px;
       background:linear-gradient(180deg, #eff1f3, #e8ebee);
@@ -251,6 +259,10 @@
       background:#a9b0b9;
     }
 
+    .preview-path{
+      display:none;
+    }
+
     iframe{
       width:100%;
       flex:1;
@@ -260,7 +272,9 @@
       min-height:720px;
     }
 
-    .foot{display:none;}
+    .foot{
+      display:none;
+    }
 
     @media (max-width:1180px){
       .wrap{grid-template-columns:1fr;}
@@ -361,6 +375,7 @@
       <div class="preview-shell">
         <div class="preview-bar">
           <div class="dots"><i></i><i></i><i></i></div>
+          <div class="preview-path" id="previewPath"></div>
         </div>
         <iframe id="previewFrame" title="HTML Preview"></iframe>
       </div>
@@ -376,31 +391,19 @@
     const saveBtn = document.getElementById('saveBtn');
     const newWindowBtn = document.getElementById('newWindowBtn');
     const previewFrame = document.getElementById('previewFrame');
+    const previewPath = document.getElementById('previewPath');
 
     const sampleHTML = htmlInput.value;
-    const DESKTOP_CAPTURE_WIDTH = 1200;
 
-    function stripCodeFence(text) {
-      let cleaned = text.trim();
-
-      cleaned = cleaned.replace(/^```[a-zA-Z0-9_-]*\s*\n?/i, '');
-      cleaned = cleaned.replace(/\n?```$/i, '');
-
-      return cleaned.trim();
+    function updateStatus(text) {
+      if (previewPath) previewPath.textContent = text || '';
     }
 
-    function isFullHTML(html) {
+    function wrapHTML(html){
       const trimmed = html.trim().toLowerCase();
-      return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html');
-    }
-
-    function wrapHTML(html) {
-      const cleanedHTML = stripCodeFence(html);
-
-      if (isFullHTML(cleanedHTML)) {
-        return cleanedHTML;
+      if (trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')) {
+        return html;
       }
-
       return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -420,22 +423,23 @@
 </style>
 </head>
 <body>
-${cleanedHTML}
+${html}
 </body>
 </html>`;
     }
 
-    function renderHTML(html) {
+    function renderHTML(html, label = '') {
       previewFrame.srcdoc = wrapHTML(html);
+      updateStatus(label);
     }
 
     applyBtn.addEventListener('click', () => {
-      renderHTML(htmlInput.value);
+      renderHTML(htmlInput.value, '');
     });
 
     sampleBtn.addEventListener('click', () => {
       htmlInput.value = sampleHTML;
-      renderHTML(sampleHTML);
+      renderHTML(sampleHTML, '');
       fileName.textContent = '선택된 파일 없음';
     });
 
@@ -448,7 +452,7 @@ ${cleanedHTML}
       reader.onload = () => {
         const text = reader.result;
         htmlInput.value = text;
-        renderHTML(text);
+        renderHTML(text, '');
       };
       reader.readAsText(file, 'utf-8');
     });
@@ -463,7 +467,7 @@ ${cleanedHTML}
 
     function waitForFrameLoad(frame) {
       return new Promise((resolve) => {
-        const done = () => setTimeout(resolve, 400);
+        const done = () => setTimeout(resolve, 350);
         frame.onload = done;
 
         const doc = frame.contentDocument || frame.contentWindow?.document;
@@ -471,139 +475,14 @@ ${cleanedHTML}
       });
     }
 
-    function isMobileDevice() {
-      return window.innerWidth <= 768;
-    }
-
-    function makeDesktopCaptureDocument(originalHTML) {
-      const cleanedHTML = stripCodeFence(originalHTML);
-      const isFull = isFullHTML(cleanedHTML);
-
-      if (isFull) {
-        let result = cleanedHTML;
-
-        if (/<meta[^>]*name=["']viewport["']/i.test(result)) {
-          result = result.replace(
-            /<meta[^>]*name=["']viewport["'][^>]*>/i,
-            `<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0">`
-          );
-        } else {
-          result = result.replace(
-            /<head([^>]*)>/i,
-            `<head$1>
-<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0">`
-          );
-        }
-
-        if (/<body[^>]*>/i.test(result)) {
-          result = result.replace(
-            /<body([^>]*)>/i,
-            `<body$1 style="margin:0; padding:24px; box-sizing:border-box; width:${DESKTOP_CAPTURE_WIDTH}px; min-width:${DESKTOP_CAPTURE_WIDTH}px; background:#ffffff;">`
-          );
-        }
-
-        return result;
-      }
-
-      return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0" />
-<title>Desktop Capture</title>
-<style>
-  html,body{
-    margin:0;
-    padding:0;
-    width:${DESKTOP_CAPTURE_WIDTH}px;
-    min-width:${DESKTOP_CAPTURE_WIDTH}px;
-    background:#ffffff;
-  }
-  body{
-    padding:24px;
-    box-sizing:border-box;
-  }
-  #capture-root{
-    width:${DESKTOP_CAPTURE_WIDTH - 48}px;
-  }
-</style>
-</head>
-<body>
-  <div id="capture-root">
-    ${cleanedHTML}
-  </div>
-</body>
-</html>`;
-    }
-
     async function saveFullPNG() {
       try {
-        if (!isMobileDevice()) {
-          await waitForFrameLoad(previewFrame);
+        await waitForFrameLoad(previewFrame);
 
-          const frameDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
-          if (!frameDoc || !frameDoc.documentElement || !frameDoc.body) {
-            alert('미리보기가 아직 준비되지 않았습니다.');
-            return;
-          }
+        const frameWindow = previewFrame.contentWindow;
+        const frameDoc = previewFrame.contentDocument || frameWindow.document;
 
-          const htmlEl = frameDoc.documentElement;
-          const bodyEl = frameDoc.body;
-
-          const fullWidth = Math.max(
-            bodyEl.scrollWidth,
-            bodyEl.offsetWidth,
-            htmlEl.clientWidth,
-            htmlEl.scrollWidth,
-            htmlEl.offsetWidth
-          );
-
-          const fullHeight = Math.max(
-            bodyEl.scrollHeight,
-            bodyEl.offsetHeight,
-            htmlEl.clientHeight,
-            htmlEl.scrollHeight,
-            htmlEl.offsetHeight
-          );
-
-          const canvas = await html2canvas(bodyEl, {
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            scale: 2,
-            width: fullWidth,
-            height: fullHeight,
-            windowWidth: fullWidth,
-            windowHeight: fullHeight,
-            scrollX: 0,
-            scrollY: 0
-          });
-
-          const link = document.createElement('a');
-          link.download = 'archive-preview.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
-          return;
-        }
-
-        const captureHTML = makeDesktopCaptureDocument(htmlInput.value);
-
-        const tempFrame = document.createElement('iframe');
-        tempFrame.style.position = 'fixed';
-        tempFrame.style.left = '-99999px';
-        tempFrame.style.top = '0';
-        tempFrame.style.width = DESKTOP_CAPTURE_WIDTH + 'px';
-        tempFrame.style.height = '10px';
-        tempFrame.style.opacity = '0';
-        tempFrame.style.pointerEvents = 'none';
-        document.body.appendChild(tempFrame);
-
-        tempFrame.srcdoc = captureHTML;
-        await waitForFrameLoad(tempFrame);
-
-        const frameDoc = tempFrame.contentDocument || tempFrame.contentWindow.document;
         if (!frameDoc || !frameDoc.documentElement || !frameDoc.body) {
-          document.body.removeChild(tempFrame);
           alert('미리보기가 아직 준비되지 않았습니다.');
           return;
         }
@@ -611,7 +490,24 @@ ${cleanedHTML}
         const htmlEl = frameDoc.documentElement;
         const bodyEl = frameDoc.body;
 
-        const fullWidth = DESKTOP_CAPTURE_WIDTH;
+        const oldHtmlOverflow = htmlEl.style.overflow;
+        const oldBodyOverflow = bodyEl.style.overflow;
+        const oldHtmlHeight = htmlEl.style.height;
+        const oldBodyHeight = bodyEl.style.height;
+
+        htmlEl.style.overflow = 'visible';
+        bodyEl.style.overflow = 'visible';
+        htmlEl.style.height = 'auto';
+        bodyEl.style.height = 'auto';
+
+        const fullWidth = Math.max(
+          bodyEl.scrollWidth,
+          bodyEl.offsetWidth,
+          htmlEl.clientWidth,
+          htmlEl.scrollWidth,
+          htmlEl.offsetWidth
+        );
+
         const fullHeight = Math.max(
           bodyEl.scrollHeight,
           bodyEl.offsetHeight,
@@ -620,10 +516,13 @@ ${cleanedHTML}
           htmlEl.offsetHeight
         );
 
-        tempFrame.style.width = fullWidth + 'px';
-        tempFrame.style.height = fullHeight + 'px';
+        const originalFrameWidth = previewFrame.style.width;
+        const originalFrameHeight = previewFrame.style.height;
 
-        await new Promise(resolve => setTimeout(resolve, 250));
+        previewFrame.style.width = fullWidth + 'px';
+        previewFrame.style.height = fullHeight + 'px';
+
+        await new Promise(resolve => setTimeout(resolve, 200));
 
         const canvas = await html2canvas(bodyEl, {
           useCORS: true,
@@ -643,7 +542,13 @@ ${cleanedHTML}
         link.href = canvas.toDataURL('image/png');
         link.click();
 
-        document.body.removeChild(tempFrame);
+        previewFrame.style.width = originalFrameWidth;
+        previewFrame.style.height = originalFrameHeight;
+
+        htmlEl.style.overflow = oldHtmlOverflow;
+        bodyEl.style.overflow = oldBodyOverflow;
+        htmlEl.style.height = oldHtmlHeight;
+        bodyEl.style.height = oldBodyHeight;
       } catch (error) {
         console.error(error);
         alert('PNG 저장 중 오류가 발생했습니다. 외부 리소스가 많은 HTML은 일부가 다르게 저장될 수 있습니다.');
@@ -652,7 +557,7 @@ ${cleanedHTML}
 
     saveBtn.addEventListener('click', saveFullPNG);
 
-    renderHTML(sampleHTML);
+    renderHTML(sampleHTML, '');
   </script>
 </body>
 </html>
