@@ -401,9 +401,11 @@
 
     function wrapHTML(html){
       const trimmed = html.trim().toLowerCase();
+
       if (trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')) {
         return html;
       }
+
       return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -411,14 +413,74 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Preview</title>
 <style>
-  html,body{
+  *{
+    box-sizing:border-box;
+  }
+
+  html, body{
     margin:0;
     padding:0;
     background:#ffffff;
+    width:100%;
   }
+
   body{
     padding:24px;
-    box-sizing:border-box;
+    font-family:"Pretendard","SUIT","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    color:#222;
+    line-height:1.6;
+    word-break:keep-all;
+    overflow-wrap:break-word;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  div, section, article, aside, main, header, footer, nav{
+    display:block;
+  }
+
+  p, h1, h2, h3, h4, h5, h6, ul, ol, dl, blockquote, pre{
+    margin-top:0;
+    margin-bottom:1em;
+    line-height:1.6;
+  }
+
+  small{
+    line-height:1.5;
+  }
+
+  b, strong, em, i, span, mark, ins, del, u{
+    line-height:inherit;
+  }
+
+  hr{
+    border:none;
+    border-top:1px solid #ddd;
+    margin:16px 0;
+  }
+
+  details{
+    display:block;
+    margin-top:10px;
+  }
+
+  summary{
+    line-height:1.5;
+  }
+
+  img{
+    max-width:100%;
+    height:auto;
+    display:block;
+  }
+
+  table{
+    border-collapse:collapse;
+    width:100%;
+  }
+
+  iframe{
+    max-width:100%;
   }
 </style>
 </head>
@@ -467,15 +529,58 @@ ${html}
 
     function waitForFrameLoad(frame) {
       return new Promise((resolve) => {
-        const done = () => setTimeout(resolve, 350);
+        let doneCalled = false;
+
+        const done = () => {
+          if (doneCalled) return;
+          doneCalled = true;
+          setTimeout(resolve, 500);
+        };
+
         frame.onload = done;
 
-        const doc = frame.contentDocument || frame.contentWindow?.document;
-        if (doc && doc.readyState === 'complete') done();
+        try {
+          const doc = frame.contentDocument || frame.contentWindow?.document;
+          if (doc) {
+            if (doc.readyState === 'complete') {
+              done();
+              return;
+            }
+
+            const images = Array.from(doc.images || []);
+            if (images.length === 0) {
+              setTimeout(done, 300);
+              return;
+            }
+
+            let loaded = 0;
+            const check = () => {
+              loaded++;
+              if (loaded >= images.length) done();
+            };
+
+            images.forEach(img => {
+              if (img.complete) {
+                check();
+              } else {
+                img.addEventListener('load', check, { once:true });
+                img.addEventListener('error', check, { once:true });
+              }
+            });
+
+            setTimeout(done, 1200);
+            return;
+          }
+        } catch (e) {}
+
+        setTimeout(done, 600);
       });
     }
 
     async function saveFullPNG() {
+      const originalFrameWidth = previewFrame.style.width;
+      const originalFrameHeight = previewFrame.style.height;
+
       try {
         await waitForFrameLoad(previewFrame);
 
@@ -494,35 +599,38 @@ ${html}
         const oldBodyOverflow = bodyEl.style.overflow;
         const oldHtmlHeight = htmlEl.style.height;
         const oldBodyHeight = bodyEl.style.height;
+        const oldHtmlWidth = htmlEl.style.width;
+        const oldBodyWidth = bodyEl.style.width;
 
         htmlEl.style.overflow = 'visible';
         bodyEl.style.overflow = 'visible';
         htmlEl.style.height = 'auto';
         bodyEl.style.height = 'auto';
+        htmlEl.style.width = 'auto';
+        bodyEl.style.width = 'auto';
 
         const fullWidth = Math.max(
           bodyEl.scrollWidth,
           bodyEl.offsetWidth,
-          htmlEl.clientWidth,
+          bodyEl.clientWidth,
           htmlEl.scrollWidth,
-          htmlEl.offsetWidth
+          htmlEl.offsetWidth,
+          htmlEl.clientWidth
         );
 
         const fullHeight = Math.max(
           bodyEl.scrollHeight,
           bodyEl.offsetHeight,
-          htmlEl.clientHeight,
+          bodyEl.clientHeight,
           htmlEl.scrollHeight,
-          htmlEl.offsetHeight
+          htmlEl.offsetHeight,
+          htmlEl.clientHeight
         );
-
-        const originalFrameWidth = previewFrame.style.width;
-        const originalFrameHeight = previewFrame.style.height;
 
         previewFrame.style.width = fullWidth + 'px';
         previewFrame.style.height = fullHeight + 'px';
 
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 250));
 
         const canvas = await html2canvas(bodyEl, {
           useCORS: true,
@@ -542,16 +650,18 @@ ${html}
         link.href = canvas.toDataURL('image/png');
         link.click();
 
-        previewFrame.style.width = originalFrameWidth;
-        previewFrame.style.height = originalFrameHeight;
-
         htmlEl.style.overflow = oldHtmlOverflow;
         bodyEl.style.overflow = oldBodyOverflow;
         htmlEl.style.height = oldHtmlHeight;
         bodyEl.style.height = oldBodyHeight;
+        htmlEl.style.width = oldHtmlWidth;
+        bodyEl.style.width = oldBodyWidth;
       } catch (error) {
         console.error(error);
         alert('PNG 저장 중 오류가 발생했습니다. 외부 리소스가 많은 HTML은 일부가 다르게 저장될 수 있습니다.');
+      } finally {
+        previewFrame.style.width = originalFrameWidth;
+        previewFrame.style.height = originalFrameHeight;
       }
     }
 
