@@ -33,9 +33,7 @@
         linear-gradient(180deg, var(--bg), var(--bg2));
     }
 
-    body{
-      padding:24px;
-    }
+    body{padding:24px;}
 
     .wrap{
       max-width:1600px;
@@ -135,9 +133,7 @@
       transform:translateY(-1px);
     }
 
-    .file-label input{
-      display:none;
-    }
+    .file-label input{display:none;}
 
     .file-name{
       margin-top:10px;
@@ -236,7 +232,6 @@
     .preview-bar{
       display:flex;
       align-items:center;
-      justify-content:space-between;
       gap:12px;
       padding:12px 16px;
       background:linear-gradient(180deg, #eff1f3, #e8ebee);
@@ -265,45 +260,22 @@
       min-height:720px;
     }
 
-    .foot{
-      display:none;
-    }
+    .foot{display:none;}
 
     @media (max-width:1180px){
-      .wrap{
-        grid-template-columns:1fr;
-      }
-      .viewer{
-        min-height:auto;
-      }
-      .preview-shell{
-        min-height:68vh;
-      }
+      .wrap{grid-template-columns:1fr;}
+      .viewer{min-height:auto;}
+      .preview-shell{min-height:68vh;}
     }
 
     @media (max-width:720px){
-      body{
-        padding:14px;
-      }
-      .sidebar,.viewer{
-        border-radius:22px;
-      }
-      .sidebar{
-        padding:20px;
-      }
-      .viewer{
-        padding:12px;
-      }
-      .btn-row{
-        grid-template-columns:1fr;
-      }
-      textarea{
-        min-height:280px;
-      }
-      .preview-shell{
-        border-radius:18px;
-        min-height:64vh;
-      }
+      body{padding:14px;}
+      .sidebar,.viewer{border-radius:22px;}
+      .sidebar{padding:20px;}
+      .viewer{padding:12px;}
+      .btn-row{grid-template-columns:1fr;}
+      textarea{min-height:280px;}
+      .preview-shell{border-radius:18px;min-height:64vh;}
     }
   </style>
 </head>
@@ -408,13 +380,26 @@
     const sampleHTML = htmlInput.value;
     const DESKTOP_CAPTURE_WIDTH = 1200;
 
+    function stripCodeFence(text) {
+      let cleaned = text.trim();
+
+      cleaned = cleaned.replace(/^```[a-zA-Z0-9_-]*\s*\n?/i, '');
+      cleaned = cleaned.replace(/\n?```$/i, '');
+
+      return cleaned.trim();
+    }
+
     function isFullHTML(html) {
       const trimmed = html.trim().toLowerCase();
       return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html');
     }
 
     function wrapHTML(html) {
-      if (isFullHTML(html)) return html;
+      const cleanedHTML = stripCodeFence(html);
+
+      if (isFullHTML(cleanedHTML)) {
+        return cleanedHTML;
+      }
 
       return `<!DOCTYPE html>
 <html lang="ko">
@@ -435,7 +420,7 @@
 </style>
 </head>
 <body>
-${html}
+${cleanedHTML}
 </body>
 </html>`;
     }
@@ -491,21 +476,33 @@ ${html}
     }
 
     function makeDesktopCaptureDocument(originalHTML) {
-      const isFull = isFullHTML(originalHTML);
+      const cleanedHTML = stripCodeFence(originalHTML);
+      const isFull = isFullHTML(cleanedHTML);
 
       if (isFull) {
-        if (/<meta[^>]*name=["']viewport["']/i.test(originalHTML)) {
-          return originalHTML.replace(
+        let result = cleanedHTML;
+
+        if (/<meta[^>]*name=["']viewport["']/i.test(result)) {
+          result = result.replace(
             /<meta[^>]*name=["']viewport["'][^>]*>/i,
             `<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0">`
           );
+        } else {
+          result = result.replace(
+            /<head([^>]*)>/i,
+            `<head$1>
+<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0">`
+          );
         }
 
-        return originalHTML.replace(
-          /<head([^>]*)>/i,
-          `<head$1>
-<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0">`
-        );
+        if (/<body[^>]*>/i.test(result)) {
+          result = result.replace(
+            /<body([^>]*)>/i,
+            `<body$1 style="margin:0; padding:24px; box-sizing:border-box; width:${DESKTOP_CAPTURE_WIDTH}px; min-width:${DESKTOP_CAPTURE_WIDTH}px; background:#ffffff;">`
+          );
+        }
+
+        return result;
       }
 
       return `<!DOCTYPE html>
@@ -533,31 +530,69 @@ ${html}
 </head>
 <body>
   <div id="capture-root">
-    ${originalHTML}
+    ${cleanedHTML}
   </div>
 </body>
 </html>`;
     }
 
-    async function buildCaptureFrameHTML() {
-      const originalHTML = htmlInput.value;
-
-      if (!isMobileDevice()) {
-        return wrapHTML(originalHTML);
-      }
-
-      return makeDesktopCaptureDocument(originalHTML);
-    }
-
     async function saveFullPNG() {
       try {
-        const captureHTML = await buildCaptureFrameHTML();
+        if (!isMobileDevice()) {
+          await waitForFrameLoad(previewFrame);
+
+          const frameDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+          if (!frameDoc || !frameDoc.documentElement || !frameDoc.body) {
+            alert('미리보기가 아직 준비되지 않았습니다.');
+            return;
+          }
+
+          const htmlEl = frameDoc.documentElement;
+          const bodyEl = frameDoc.body;
+
+          const fullWidth = Math.max(
+            bodyEl.scrollWidth,
+            bodyEl.offsetWidth,
+            htmlEl.clientWidth,
+            htmlEl.scrollWidth,
+            htmlEl.offsetWidth
+          );
+
+          const fullHeight = Math.max(
+            bodyEl.scrollHeight,
+            bodyEl.offsetHeight,
+            htmlEl.clientHeight,
+            htmlEl.scrollHeight,
+            htmlEl.offsetHeight
+          );
+
+          const canvas = await html2canvas(bodyEl, {
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            scale: 2,
+            width: fullWidth,
+            height: fullHeight,
+            windowWidth: fullWidth,
+            windowHeight: fullHeight,
+            scrollX: 0,
+            scrollY: 0
+          });
+
+          const link = document.createElement('a');
+          link.download = 'archive-preview.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+          return;
+        }
+
+        const captureHTML = makeDesktopCaptureDocument(htmlInput.value);
 
         const tempFrame = document.createElement('iframe');
         tempFrame.style.position = 'fixed';
         tempFrame.style.left = '-99999px';
         tempFrame.style.top = '0';
-        tempFrame.style.width = isMobileDevice() ? DESKTOP_CAPTURE_WIDTH + 'px' : '1200px';
+        tempFrame.style.width = DESKTOP_CAPTURE_WIDTH + 'px';
         tempFrame.style.height = '10px';
         tempFrame.style.opacity = '0';
         tempFrame.style.pointerEvents = 'none';
@@ -576,33 +611,7 @@ ${html}
         const htmlEl = frameDoc.documentElement;
         const bodyEl = frameDoc.body;
 
-        const oldHtmlOverflow = htmlEl.style.overflow;
-        const oldBodyOverflow = bodyEl.style.overflow;
-        const oldHtmlHeight = htmlEl.style.height;
-        const oldBodyHeight = bodyEl.style.height;
-        const oldHtmlWidth = htmlEl.style.width;
-        const oldBodyWidth = bodyEl.style.width;
-
-        htmlEl.style.overflow = 'visible';
-        bodyEl.style.overflow = 'visible';
-        htmlEl.style.height = 'auto';
-        bodyEl.style.height = 'auto';
-
-        if (isMobileDevice()) {
-          htmlEl.style.width = DESKTOP_CAPTURE_WIDTH + 'px';
-          bodyEl.style.width = DESKTOP_CAPTURE_WIDTH + 'px';
-        }
-
-        const fullWidth = isMobileDevice()
-          ? DESKTOP_CAPTURE_WIDTH
-          : Math.max(
-              bodyEl.scrollWidth,
-              bodyEl.offsetWidth,
-              htmlEl.clientWidth,
-              htmlEl.scrollWidth,
-              htmlEl.offsetWidth
-            );
-
+        const fullWidth = DESKTOP_CAPTURE_WIDTH;
         const fullHeight = Math.max(
           bodyEl.scrollHeight,
           bodyEl.offsetHeight,
@@ -633,13 +642,6 @@ ${html}
         link.download = 'archive-preview.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
-
-        htmlEl.style.overflow = oldHtmlOverflow;
-        bodyEl.style.overflow = oldBodyOverflow;
-        htmlEl.style.height = oldHtmlHeight;
-        bodyEl.style.height = oldBodyHeight;
-        htmlEl.style.width = oldHtmlWidth;
-        bodyEl.style.width = oldBodyWidth;
 
         document.body.removeChild(tempFrame);
       } catch (error) {
