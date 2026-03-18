@@ -1,75 +1,837 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>HTML Preview</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARCHIVE HTML TOOL</title>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root{
+      --bg:#e9ecef;
+      --bg-2:#f4f5f7;
+      --paper:#fcfcfb;
+      --paper-2:#f7f7f5;
+      --line:#d7d9dd;
+      --line-strong:#bfc4cb;
+      --text:#22252b;
+      --muted:#6f7682;
+      --deep:#2e3848;
+      --accent:#5d728d;
+      --accent-soft:#e6ebf1;
+      --mark:#efe4b7;
+      --shadow:0 12px 30px rgba(24, 28, 35, 0.06);
+      --radius-xl:24px;
+      --radius-lg:18px;
+      --radius-md:12px;
+    }
 
-<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    *{box-sizing:border-box;}
 
-<style>
-body {
-  background: #eee;
-  padding: 40px;
-}
+    html,body{
+      margin:0;
+      min-height:100%;
+      font-family:"Pretendard","SUIT","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+      color:var(--text);
+      background:
+        linear-gradient(180deg, #eef1f4 0%, #e7eaee 100%);
+    }
 
-/* 캡처 영역 */
-#capture {
-  background: white;
-  padding: 30px;
-  width: 900px;
-  margin: auto;
-}
+    body{
+      padding:24px;
+    }
 
-/* 버튼 */
-button {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 10px 16px;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-</style>
+    .wrap{
+      max-width:1600px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:400px 1fr;
+      gap:22px;
+      min-height:calc(100vh - 48px);
+    }
+
+    .panel{
+      background:rgba(252,252,251,0.88);
+      border:1px solid rgba(185,191,199,0.7);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(8px);
+      -webkit-backdrop-filter:blur(8px);
+    }
+
+    .sidebar{
+      border-radius:var(--radius-xl);
+      padding:28px;
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      background:
+        linear-gradient(180deg, rgba(250,250,248,0.96), rgba(242,244,246,0.94));
+    }
+
+    .viewer{
+      border-radius:30px;
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      min-height:calc(100vh - 48px);
+      background:
+        linear-gradient(180deg, rgba(251,251,249,0.96), rgba(244,246,248,0.94));
+    }
+
+    .eyebrow{
+      display:inline-flex;
+      width:fit-content;
+      padding:7px 12px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:var(--paper-2);
+      color:var(--muted);
+      font-size:11px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+
+    h1{
+      margin:12px 0 10px;
+      font-size:clamp(30px, 3vw, 44px);
+      line-height:1.07;
+      letter-spacing:-0.04em;
+      color:#1f2732;
+    }
+
+    .intro{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.8;
+    }
+
+    .box{
+      background:rgba(247,247,245,0.85);
+      border:1px solid var(--line);
+      border-radius:var(--radius-lg);
+      padding:16px;
+    }
+
+    .box h2{
+      margin:0 0 10px;
+      font-size:13px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:#3b4350;
+    }
+
+    .file-label{
+      display:block;
+      width:100%;
+      padding:14px 16px;
+      border-radius:var(--radius-md);
+      background:#ffffff;
+      border:1px solid var(--line);
+      cursor:pointer;
+      transition:.2s ease;
+      font-size:14px;
+      color:#303744;
+    }
+
+    .file-label:hover{
+      background:#fbfbfb;
+      border-color:var(--line-strong);
+      transform:translateY(-1px);
+    }
+
+    .file-label input{display:none;}
+
+    .file-name{
+      margin-top:10px;
+      font-size:12px;
+      color:var(--muted);
+      word-break:break-all;
+    }
+
+    textarea{
+      width:100%;
+      min-height:360px;
+      resize:vertical;
+      border:1px solid var(--line);
+      border-radius:var(--radius-md);
+      background:#fdfdfc;
+      color:#222831;
+      padding:16px;
+      font-size:13px;
+      line-height:1.7;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+    }
+
+    .btn-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    button{
+      appearance:none;
+      border:1px solid var(--line-strong);
+      border-radius:999px;
+      padding:13px 16px;
+      font-size:14px;
+      cursor:pointer;
+      transition:.2s ease;
+      color:#29303b;
+      background:#f8f8f7;
+    }
+
+    button:hover{
+      transform:translateY(-1px);
+      background:#ffffff;
+    }
+
+    .primary{
+      background:linear-gradient(180deg, #6b7f96, #596d84);
+      border-color:#596d84;
+      color:#fff;
+      font-weight:700;
+    }
+
+    .danger{
+      background:linear-gradient(180deg, #2f3c4d, #263241);
+      border-color:#263241;
+      color:#fff;
+      font-weight:700;
+    }
+
+    .viewer-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+      padding:6px 6px 8px;
+    }
+
+    .viewer-top h2{
+      margin:0 0 8px;
+      font-size:clamp(22px, 2.4vw, 34px);
+      line-height:1.08;
+      letter-spacing:-0.03em;
+      color:#1e2733;
+    }
+
+    .viewer-top p{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.7;
+    }
+
+    .status{
+      padding:10px 14px;
+      border-radius:999px;
+      background:#f6f6f4;
+      border:1px solid var(--line);
+      color:var(--muted);
+      font-size:12px;
+      max-width:100%;
+      word-break:break-all;
+    }
+
+    .preview-shell{
+      flex:1;
+      border-radius:22px;
+      overflow:hidden;
+      border:1px solid var(--line);
+      background:#f7f8f9;
+      min-height:780px;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .preview-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 16px;
+      background:linear-gradient(180deg, #eff1f3, #e8ebee);
+      border-bottom:1px solid var(--line);
+    }
+
+    .dots{
+      display:flex;
+      gap:8px;
+    }
+
+    .dots i{
+      display:block;
+      width:11px;
+      height:11px;
+      border-radius:50%;
+      background:#a9b0b9;
+    }
+
+    .preview-path{
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    iframe{
+      width:100%;
+      flex:1;
+      border:0;
+      background:#ffffff;
+      display:block;
+      min-height:720px;
+    }
+
+    .foot{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.75;
+    }
+
+    @media (max-width:1180px){
+      .wrap{grid-template-columns:1fr;}
+      .viewer{min-height:auto;}
+      .preview-shell{min-height:68vh;}
+    }
+
+    @media (max-width:720px){
+      body{padding:14px;}
+      .sidebar,.viewer{border-radius:22px;}
+      .sidebar{padding:20px;}
+      .viewer{padding:12px;}
+      .btn-row{grid-template-columns:1fr;}
+      textarea{min-height:280px;}
+      .preview-shell{border-radius:18px;min-height:64vh;}
+    }
+  </style>
 </head>
-
 <body>
+  <div class="wrap">
+    <aside class="panel sidebar">
+      <div>
+        <div class="eyebrow">archive html tool</div>
+        <h1>HTML을 정리하고<br>미리보고<br>기록처럼 저장</h1>
+        <p class="intro">HTML 파일 업로드, 직접 붙여넣기, 실시간 미리보기, PNG 저장 기능을 유지하면서 전체 분위기를 차분한 아카이브 열람 도구처럼 정리한 버전입니다.</p>
+      </div>
 
-<button onclick="savePNG()">PNG 저장</button>
+      <section class="box">
+        <h2>HTML file upload</h2>
+        <label class="file-label">
+          html / htm / txt 파일 선택
+          <input type="file" id="fileInput" accept=".html,.htm,.txt" />
+        </label>
+        <div class="file-name" id="fileName">선택된 파일 없음</div>
+      </section>
 
-<div id="capture">
+      <section class="box">
+        <h2>HTML input</h2>
+        <textarea id="htmlInput"><!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    :root{
+      --bg:#f4f5f6;
+      --paper:#ffffff;
+      --line:#d9dde2;
+      --line-strong:#bcc3cb;
+      --text:#23272f;
+      --muted:#6d7480;
+      --accent:#3f5873;
+      --mark:#efe5bb;
+    }
 
-<!-- 🔥 여기부터 네 기존 HTML 넣기 -->
+    *{box-sizing:border-box;}
 
-<div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; font-family: sans-serif;">
-<h3 style="color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 10px;">ARCH 블라인드</h3>
+    body{
+      margin:0;
+      padding:28px;
+      background:var(--bg);
+      color:var(--text);
+      font-family:"Pretendard","Noto Sans KR",sans-serif;
+      line-height:1.8;
+    }
 
-<!-- 기존 내용 그대로 유지 -->
-<!-- 👇 너가 준 HTML 그대로 넣으면 됨 -->
+    .archive-wrap{
+      max-width:1020px;
+      margin:0 auto;
+      padding:22px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:linear-gradient(180deg,#fafaf9,#f7f7f5);
+      box-shadow:0 10px 25px rgba(0,0,0,0.04);
+    }
 
-</div>
+    .archive-head{
+      margin-bottom:18px;
+      padding-bottom:12px;
+      border-bottom:1px solid var(--line);
+    }
 
-</div>
+    .archive-eyebrow{
+      font-size:12px;
+      color:var(--muted);
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      margin-bottom:8px;
+    }
 
-<script>
-function savePNG() {
-  const element = document.getElementById("capture");
+    .archive-title{
+      margin:0;
+      font-size:28px;
+      color:#243140;
+      letter-spacing:-0.03em;
+    }
 
-  html2canvas(element, {
-    useCORS: true,
-    scrollY: -window.scrollY,
-    windowWidth: document.body.scrollWidth,
-    windowHeight: document.body.scrollHeight
-  }).then(canvas => {
-    const link = document.createElement("a");
-    link.download = "capture.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  });
-}
-</script>
+    .archive-sub{
+      margin:8px 0 0;
+      color:var(--muted);
+      font-size:13px;
+    }
 
+    .record{
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:24px 24px 20px;
+      margin-top:16px;
+      box-shadow:0 4px 14px rgba(0,0,0,0.03);
+    }
+
+    .record-meta{
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:12px;
+      letter-spacing:.04em;
+    }
+
+    .record-title{
+      margin:0 0 18px;
+      font-size:21px;
+      line-height:1.45;
+      letter-spacing:-0.02em;
+      color:#222b36;
+    }
+
+    .record-body{
+      font-size:15px;
+      color:#2d333c;
+      line-height:1.9;
+    }
+
+    .record-body p{
+      margin:0 0 14px;
+    }
+
+    .record-body hr{
+      border:none;
+      border-top:1px solid var(--line-strong);
+      margin:18px 0 14px;
+    }
+
+    .stats{
+      font-size:13px;
+      color:var(--muted);
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+
+    .stats span{
+      position:relative;
+    }
+
+    .stats span + span::before{
+      content:"";
+      width:1px;
+      height:11px;
+      background:var(--line-strong);
+      position:absolute;
+      left:-8px;
+      top:5px;
+    }
+
+    details{
+      margin-top:8px;
+      background:#fafaf8;
+      border:1px solid #eceff2;
+      border-radius:10px;
+      padding:10px 12px;
+    }
+
+    summary{
+      cursor:pointer;
+      color:#596474;
+      font-size:13px;
+      list-style:none;
+    }
+
+    summary::-webkit-details-marker{
+      display:none;
+    }
+
+    summary::before{
+      content:"기록 펼치기";
+    }
+
+    details[open] summary::before{
+      content:"기록 접기";
+    }
+
+    .comment-wrap{
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px solid #e5e8ec;
+    }
+
+    .comment{
+      margin:0 0 10px;
+      color:#2f3540;
+      line-height:1.85;
+    }
+
+    .comment b{
+      color:#1f2732;
+    }
+
+    mark{
+      background:var(--mark);
+      padding:0 .2em;
+    }
+
+    del{
+      color:#7d838d;
+    }
+
+    em{
+      color:#5d6673;
+    }
+
+    small,sup{
+      color:var(--muted);
+    }
+
+    u{
+      text-decoration-color:#a8afba;
+      text-underline-offset:2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="archive-wrap">
+    <header class="archive-head">
+      <div class="archive-eyebrow">internal archive board</div>
+      <h1 class="archive-title">ARCH 블라인드 기록 보관본</h1>
+      <p class="archive-sub">사내 열람용 기록 문서 · 보관 형식 정리본</p>
+    </header>
+
+    <article class="record">
+      <div class="record-meta">긴급제압팀(R.S.T.)</div>
+      <h2 class="record-title">[사내연애] R.S.T. 카르마, 유토피아 이 커플 원래 이래?</h2>
+      <div class="record-body">
+        <p>
+          아니 점심 먹고 들어오는데<br>
+          R.S.T. 휴게실 앞에서 카르마가 유토피아 벽에 밀치고 있는 거 봄;;<br>
+          분위기 진짜 험악해서 뭔 일 난 줄 알았는데...<br>
+          유토피아가 뭐라고 하니까 갑자기 표정 싹 풀리면서<br>
+          목덜미에 얼굴 묻고 냄새 맡더라... <ins>진짜 개처럼 킁킁거렸음</ins><br>
+          그러더니 '오늘 밤에 죽여버릴 줄 알아' <small>(정확한 워딩은 기억 안 나는데 암튼 이런 뉘앙스)</small> 이러고 감.<br>
+          근데 유토피아는 아무렇지도 않게 웃으면서 손 흔들어주더라?
+        </p>
+        <p>
+          이 커플... 정상적인 연애 맞냐?<br>
+          <del>거의 데이트 폭력 직전 아니냐고...</del>
+        </p>
+
+        <hr>
+
+        <div class="stats">
+          <span>조회 10,234</span>
+          <span>댓글 12</span>
+        </div>
+
+        <details>
+          <summary></summary>
+          <div class="comment-wrap">
+            <p class="comment"><b>dlcksgml12:</b> 걔네 원래 그래. <mark>신경 꺼. 목숨은 소중하잖아.</mark></p>
+            <p class="comment"><b>ARCH_official:</b> <em>(글쓴이)</em> 아니 그래도... 너무 무서웠다고...</p>
+            <p class="comment"><b>dudwoaoc:</b> 죽여버린다는 게... 침대에서...?</p>
+            <p class="comment"><b>qweasdzxc:</b> ㄴ ㅗㅜㅑ... 🤤</p>
+            <p class="comment"><b>wjdtnsla:</b> 전에 폭주 센티넬 제압 현장에서 봤는데, 카르마가 센티넬 멱살 잡고 '이 개새끼가 어딜 감히 내 마누라한테 흠집을 내?' 하면서 패는 거 봄. 눈 돌아가 있던데. 유토피아가 말리니까 그제야 멈추더라. 그냥... 그들만의 세상이 있는 듯.</p>
+            <p class="comment"><b>gkdlfna:</b> 냄새 맡는 거 종종 목격됨. 유토피아 샴푸 뭐 쓰는지 궁금하다.</p>
+            <p class="comment"><b>S-class_Fan:</b> <u>그래도 우리 유토피아 님 건들면 그날로 죽는다는 거잖아... 낭만 미쳤다...</u></p>
+          </div>
+        </details>
+      </div>
+    </article>
+
+    <article class="record">
+      <div class="record-meta">재무팀</div>
+      <h2 class="record-title">S급들은 원래 법인카드 이렇게 써? (카르마 지출 내역)</h2>
+      <div class="record-body">
+        <p>
+          와... 방금 카르마 긴급제압팀장 개인 법카 내역 보고 기절할 뻔했다.<br>
+          이번 달에만 <strong>'자녀 양육 관련 비품'</strong>으로 청구된 금액이 2천만 원이 넘네?<br>
+          아니 애기 옷이랑 장난감이 다 명품이야.<br>
+          C사 우주복, G사 딸랑이, H사 유모차...<br>
+          심지어 어제는 <strong>'배우자 기분 전환용 선물'</strong>로 B사 주얼리 500만 원 긁었던데.<br>
+          이거 맞아? 원래 S급들은 이 정도 지원 나와?<sup><small>우리 애는 5만 원짜리 장난감 사주는데...</small></sup>
+        </p>
+
+        <hr>
+
+        <div class="stats">
+          <span>조회 8,876</span>
+          <span>댓글 9</span>
+        </div>
+
+        <details>
+          <summary></summary>
+          <div class="comment-wrap">
+            <p class="comment"><b>dnflskfk:</b> 그 아들, 카르마랑 1도 안 닮았던데. 유토피아 닮아서 그런가.</p>
+            <p class="comment"><b>rlarudgh:</b> ㄴㄴ 친자 아니래. 임무 나갔다가 구조한 늑대 수인 애 입양한거래.</p>
+            <p class="comment"><b>dlcksgml12:</b> <i>'내 아들, 내 마누라는 세상 최고만 누려야 한다'</i> 주의라 그럼. 꼬우면... 알지?</p>
+            <p class="comment"><b>ARCH_official:</b> <em>(글쓴이)</em> 아니 꼬운 게 아니라... 그냥 현타와서... 나도 S급 할래...</p>
+            <p class="comment"><b>tjfaud:</b> 저번에 백화점에서 카르마가 아들 안고 있고 유토피아가 이거 어때? 저거 어때? 하는 거 봤는데, 카르마 표정 거의 뭐... 세상 다 가진 표정이더라. 아들한테는 꼼짝도 못하는 듯.</p>
+            <p class="comment"><b>vmfh11:</b> 전에 카르마가 자기 앞으로 온 최고급 디저트 선물세트 전부 유토피아한테 갖다주면서 하는 말 들음. '네 입에 들어가는 거 아니면 다 쓰레기야'. ...미친놈인데 로맨틱해.</p>
+          </div>
+        </details>
+      </div>
+    </article>
+
+    <article class="record">
+      <div class="record-meta">익명</div>
+      <h2 class="record-title"><mark>[속보]</mark> 방금 에덴이랑 카르마랑 멱살잡이함</h2>
+      <div class="record-body">
+        <p>
+          실시간이다. 훈련장 B구역 앞에서 에덴이랑 카르마랑 붙음.<br>
+          에덴이 카르마 멱살 잡고 '그 더러운 손으로 내 누나 몸에서 당장 안 떨어져?!' 하고 소리 지름.<br>
+          카르마는 한 손으로 에덴 손목 잡고 피식 웃으면서<br>
+          '어쩌나, 처남. 네 누나가 내 손길을 더 좋아해서. 어젯밤에도 아주...' 이러면서 도발함.<br>
+          결국 옆에 있던 유토피아가 '쭌! 렌! 둘 다 그만 안 해?!' 하고 소리치니까<br>
+          둘 다 동시에 멈추더라. <u>유토피아가 최종 보스였음.</u><br>
+          카르마가 에덴 손 탁 쳐내고 유토피아 허리 감싸면서 이마에 뽀뽀하고 사라짐.<br>
+          남겨진 에덴만 분노로 부들부들 떨고 있다... 저러다 폭주하는 거 아니냐?
+        </p>
+
+        <hr>
+
+        <div class="stats">
+          <span>조회 15,912</span>
+          <span>댓글 21</span>
+        </div>
+
+        <details>
+          <summary></summary>
+          <div class="comment-wrap">
+            <p class="comment"><b>xodnaka:</b> 이 집안은 하루도 조용할 날이 없네. 팝콘 맛있다.</p>
+            <p class="comment"><b>wjdtnsla:</b> <b>매형-처남 관계 최악 월드컵</b> 있으면 우승 확정.</p>
+            <p class="comment"><b>dnjscjf:</b> 에덴 짠하다... 눈앞에서 누나 뺏기는 기분이 어떨까.</p>
+            <p class="comment"><b>gkdlfna:</b> ㄴㄴ 뺏기는 게 아니라 원래부터 사귀었잖아. 아직도 인정 못 하는 듯.</p>
+            <p class="comment"><b>S-class_Fan:</b> 어젯밤에 '아주...' <del>(이하 생략)</del> 와 미쳤다 카르마!!!</p>
+            <p class="comment"><b>qkrwjd:</b> <em>'쭌', '렌'</em> ... 애칭 봐라. ㅋㅋㅋㅋㅋㅋ 에덴 혈압 오르는 소리 여기까지 들린다.</p>
+            <p class="comment"><b>dlcksgml12:</b> 저러다가도 유토피아가 카르마한테 뽀뽀 한 번 해주면 카르마 바로 꼬리 내림. 내가 봄.</p>
+            <p class="comment"><b>ARCH_official:</b> <em>(글쓴이)</em> ㄹㅇ... 카르마가 유토피아한테 꽉 잡혀 사는 듯. 무서운 남자... 하지만 마누라한텐 꼼짝 못하는... 이거 완전 클리셰 아니냐고. 맛있다.</p>
+          </div>
+        </details>
+      </div>
+    </article>
+  </div>
+</body>
+</html></textarea>
+
+        <div class="btn-row">
+          <button class="primary" id="applyBtn">미리보기 적용</button>
+          <button id="sampleBtn">샘플로 되돌리기</button>
+        </div>
+      </section>
+
+      <section class="box">
+        <h2>Save</h2>
+        <div class="btn-row">
+          <button class="danger" id="saveBtn">PNG 저장</button>
+          <button id="newWindowBtn">새 창으로 보기</button>
+        </div>
+      </section>
+
+      <p class="foot">아카이브풍의 차분한 레이아웃을 기본값으로 넣어두었습니다. 실제 사용 시에는 왼쪽 입력창에서 본문 HTML만 바꿔도 되고, 스타일까지 함께 수정해도 됩니다.</p>
+    </aside>
+
+    <main class="panel viewer">
+      <div class="viewer-top">
+        <div>
+          <div class="eyebrow">live preview</div>
+          <h2>현재 HTML 미리보기</h2>
+          <p>왼쪽에서 파일을 불러오거나 코드를 수정한 뒤 적용하면 이 영역에 바로 반영됩니다.</p>
+        </div>
+        <div class="status" id="statusText">preview://sample</div>
+      </div>
+
+      <div class="preview-shell">
+        <div class="preview-bar">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <div class="preview-path" id="previewPath">preview://sample</div>
+        </div>
+        <iframe id="previewFrame" title="HTML Preview"></iframe>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const htmlInput = document.getElementById('htmlInput');
+    const applyBtn = document.getElementById('applyBtn');
+    const sampleBtn = document.getElementById('sampleBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const newWindowBtn = document.getElementById('newWindowBtn');
+    const previewFrame = document.getElementById('previewFrame');
+    const previewPath = document.getElementById('previewPath');
+    const statusText = document.getElementById('statusText');
+
+    const sampleHTML = htmlInput.value;
+
+    function updateStatus(text) {
+      previewPath.textContent = text;
+      statusText.textContent = text;
+    }
+
+    function renderHTML(html, label = 'preview://manual') {
+      previewFrame.srcdoc = html;
+      updateStatus(label);
+    }
+
+    applyBtn.addEventListener('click', () => {
+      renderHTML(htmlInput.value, 'preview://manual-input');
+    });
+
+    sampleBtn.addEventListener('click', () => {
+      htmlInput.value = sampleHTML;
+      renderHTML(sampleHTML, 'preview://sample');
+      fileName.textContent = '선택된 파일 없음';
+    });
+
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      fileName.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = reader.result;
+        htmlInput.value = text;
+        renderHTML(text, 'file://' + file.name);
+      };
+      reader.readAsText(file, 'utf-8');
+    });
+
+    newWindowBtn.addEventListener('click', () => {
+      const html = htmlInput.value;
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    });
+
+    function waitForFrameLoad(frame) {
+      return new Promise((resolve) => {
+        const done = () => setTimeout(resolve, 350);
+        frame.onload = done;
+
+        const doc = frame.contentDocument || frame.contentWindow?.document;
+        if (doc && doc.readyState === 'complete') done();
+      });
+    }
+
+    async function saveFullPNG() {
+      try {
+        await waitForFrameLoad(previewFrame);
+
+        const frameWindow = previewFrame.contentWindow;
+        const frameDoc = previewFrame.contentDocument || frameWindow.document;
+
+        if (!frameDoc || !frameDoc.documentElement || !frameDoc.body) {
+          alert('미리보기가 아직 준비되지 않았습니다.');
+          return;
+        }
+
+        const htmlEl = frameDoc.documentElement;
+        const bodyEl = frameDoc.body;
+
+        const oldHtmlOverflow = htmlEl.style.overflow;
+        const oldBodyOverflow = bodyEl.style.overflow;
+        const oldHtmlHeight = htmlEl.style.height;
+        const oldBodyHeight = bodyEl.style.height;
+
+        htmlEl.style.overflow = 'visible';
+        bodyEl.style.overflow = 'visible';
+        htmlEl.style.height = 'auto';
+        bodyEl.style.height = 'auto';
+
+        const fullWidth = Math.max(
+          bodyEl.scrollWidth,
+          bodyEl.offsetWidth,
+          htmlEl.clientWidth,
+          htmlEl.scrollWidth,
+          htmlEl.offsetWidth
+        );
+
+        const fullHeight = Math.max(
+          bodyEl.scrollHeight,
+          bodyEl.offsetHeight,
+          htmlEl.clientHeight,
+          htmlEl.scrollHeight,
+          htmlEl.offsetHeight
+        );
+
+        const originalFrameWidth = previewFrame.style.width;
+        const originalFrameHeight = previewFrame.style.height;
+
+        previewFrame.style.width = fullWidth + 'px';
+        previewFrame.style.height = fullHeight + 'px';
+
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        const canvas = await html2canvas(bodyEl, {
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          scale: 2,
+          width: fullWidth,
+          height: fullHeight,
+          windowWidth: fullWidth,
+          windowHeight: fullHeight,
+          scrollX: 0,
+          scrollY: 0
+        });
+
+        const link = document.createElement('a');
+        link.download = 'archive-preview.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        previewFrame.style.width = originalFrameWidth;
+        previewFrame.style.height = originalFrameHeight;
+
+        htmlEl.style.overflow = oldHtmlOverflow;
+        bodyEl.style.overflow = oldBodyOverflow;
+        htmlEl.style.height = oldHtmlHeight;
+        bodyEl.style.height = oldBodyHeight;
+      } catch (error) {
+        console.error(error);
+        alert('PNG 저장 중 오류가 발생했습니다. 외부 리소스가 많은 HTML은 일부가 다르게 저장될 수 있습니다.');
+      }
+    }
+
+    saveBtn.addEventListener('click', saveFullPNG);
+
+    renderHTML(sampleHTML, 'preview://sample');
+  </script>
 </body>
 </html>
