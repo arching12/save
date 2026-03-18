@@ -201,13 +201,6 @@
       font-weight:700;
     }
 
-    .soft-dark{
-      background:linear-gradient(180deg, #5a6978, #4d5b69);
-      border-color:#4d5b69;
-      color:#fff;
-      font-weight:700;
-    }
-
     .mode-row{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -284,10 +277,6 @@
       background:#fbfbfb;
     }
 
-    .status{
-      display:none;
-    }
-
     .preview-shell{
       flex:1;
       border-radius:22px;
@@ -337,6 +326,18 @@
 
     .foot{
       display:none;
+    }
+
+    .capture-frame{
+      position:fixed;
+      left:-99999px;
+      top:0;
+      width:1200px;
+      height:100px;
+      border:0;
+      visibility:hidden;
+      pointer-events:none;
+      background:#fff;
     }
 
     @media (max-width:1180px){
@@ -419,8 +420,8 @@
 </div></textarea>
 
         <div class="btn-row">
-          <button class="primary" id="applyBtn">미리보기 적용</button>
-          <button id="sampleBtn">샘플로 되돌리기</button>
+          <button class="primary" id="applyBtn" type="button">미리보기 적용</button>
+          <button id="sampleBtn" type="button">샘플로 되돌리기</button>
         </div>
       </section>
 
@@ -433,10 +434,10 @@
         </div>
 
         <div class="btn-row single">
-          <button class="danger" id="saveBtn">PNG 저장</button>
+          <button class="danger" id="saveBtn" type="button">PNG 저장</button>
         </div>
 
-        <div class="mode-help" id="modeHelp">현재 모드: 일반 저장 (현재 미리보기 비율 기준으로 저장)</div>
+        <div class="mode-help" id="modeHelp">현재 모드: 일반 저장</div>
       </section>
 
       <p class="foot"></p>
@@ -465,107 +466,41 @@
   </div>
 
   <script>
-    const fileInput = document.getElementById('fileInput');
-    const fileName = document.getElementById('fileName');
-    const htmlInput = document.getElementById('htmlInput');
-    const applyBtn = document.getElementById('applyBtn');
-    const sampleBtn = document.getElementById('sampleBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const newWindowBtn = document.getElementById('newWindowBtn');
-    const previewFrame = document.getElementById('previewFrame');
-    const previewPath = document.getElementById('previewPath');
-
-    const normalModeBtn = document.getElementById('normalModeBtn');
-    const wideModeBtn = document.getElementById('wideModeBtn');
-    const modeHelp = document.getElementById('modeHelp');
-
-    const sampleHTML = htmlInput.value;
-    let saveMode = 'normal';
-
-    function updateStatus(text) {
-      if (previewPath) previewPath.textContent = text || '';
-    }
-
-    function updateSaveMode(mode){
-      saveMode = mode;
-
-      normalModeBtn.classList.toggle('active', mode === 'normal');
-      wideModeBtn.classList.toggle('active', mode === 'wide');
-
-      if (mode === 'normal') {
-        modeHelp.textContent = '현재 모드: 일반 저장 (현재 미리보기 비율 기준으로 저장)';
-      } else {
-        modeHelp.textContent = '현재 모드: 넓게 저장 (모바일에서도 가로 폭을 넓혀 저장)';
-      }
-    }
-
-    function wrapHTML(html){
-      const trimmed = html.trim().toLowerCase();
-
-      if (trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')) {
-        return html;
-      }
-
-      return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Preview</title>
-<style>
+    const PREVIEW_STABLE_STYLE = `
+<style id="__preview_stable_style__">
   *{
     box-sizing:border-box;
   }
 
   html, body{
-    margin:0;
-    padding:0;
-    background:#ffffff;
+    margin:0 !important;
+    padding:0 !important;
     width:100%;
+    background:#fff;
   }
 
   body{
-    padding:24px;
-    font-family:"Pretendard","SUIT","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    padding:24px !important;
     color:#222;
-    line-height:1.6;
-    word-break:keep-all;
-    overflow-wrap:break-word;
+    font-family:"Pretendard","SUIT","Noto Sans KR","Apple SD Gothic Neo",sans-serif !important;
+    line-height:1.7 !important;
+    word-break:break-word !important;
+    overflow-wrap:anywhere !important;
     -webkit-font-smoothing:antialiased;
     text-rendering:optimizeLegibility;
   }
 
-  div, section, article, aside, main, header, footer, nav{
-    display:block;
+  p, div, li, dd, dt, blockquote, article, section, main, aside, header, footer, nav, summary, small, span{
+    line-height:1.7 !important;
   }
 
-  p, h1, h2, h3, h4, h5, h6, ul, ol, dl, blockquote, pre{
-    margin-top:0;
-    margin-bottom:1em;
-    line-height:1.6;
+  h1, h2, h3, h4, h5, h6{
+    line-height:1.35 !important;
+    margin-top:0 !important;
   }
 
-  small{
-    line-height:1.5;
-  }
-
-  b, strong, em, i, span, mark, ins, del, u{
-    line-height:inherit;
-  }
-
-  hr{
-    border:none;
-    border-top:1px solid #ddd;
-    margin:16px 0;
-  }
-
-  details{
-    display:block;
-    margin-top:10px;
-  }
-
-  summary{
-    line-height:1.5;
+  p, ul, ol, dl, blockquote, pre, table, details{
+    margin-top:0 !important;
   }
 
   img{
@@ -579,19 +514,85 @@
     width:100%;
   }
 
-  iframe{
-    max-width:100%;
+  summary{
+    cursor:pointer;
   }
-</style>
+
+  body *{
+    text-size-adjust:100%;
+    -webkit-text-size-adjust:100%;
+  }
+</style>`;
+
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const htmlInput = document.getElementById('htmlInput');
+    const applyBtn = document.getElementById('applyBtn');
+    const sampleBtn = document.getElementById('sampleBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const newWindowBtn = document.getElementById('newWindowBtn');
+    const previewFrame = document.getElementById('previewFrame');
+    const previewPath = document.getElementById('previewPath');
+    const normalModeBtn = document.getElementById('normalModeBtn');
+    const wideModeBtn = document.getElementById('wideModeBtn');
+    const modeHelp = document.getElementById('modeHelp');
+
+    const sampleHTML = htmlInput.value;
+    let saveMode = 'normal';
+
+    function updateStatus(text) {
+      if (previewPath) previewPath.textContent = text || '';
+    }
+
+    function updateSaveMode(mode){
+      saveMode = mode;
+      normalModeBtn.classList.toggle('active', mode === 'normal');
+      wideModeBtn.classList.toggle('active', mode === 'wide');
+      modeHelp.textContent = mode === 'wide'
+        ? '현재 모드: 넓게 저장'
+        : '현재 모드: 일반 저장';
+    }
+
+    function normalizePastedText(text) {
+      return text
+        .replace(/^\s*```html\s*/i, '')
+        .replace(/^\s*```\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .trim();
+    }
+
+    function injectStableStyleToFullHTML(html){
+      const cleaned = normalizePastedText(html);
+
+      if (/<head[\s>]/i.test(cleaned)) {
+        return cleaned.replace(/<head([^>]*)>/i, `<head$1>${PREVIEW_STABLE_STYLE}`);
+      }
+
+      if (/<html[\s>]/i.test(cleaned)) {
+        return cleaned.replace(/<html([^>]*)>/i, `<html$1><head>${PREVIEW_STABLE_STYLE}</head>`);
+      }
+
+      return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Preview</title>
+${PREVIEW_STABLE_STYLE}
 </head>
 <body>
-${html}
+${cleaned}
 </body>
 </html>`;
     }
 
+    function buildPreviewHTML(rawHTML){
+      const cleaned = normalizePastedText(rawHTML);
+      return injectStableStyleToFullHTML(cleaned);
+    }
+
     function renderHTML(html, label = '') {
-      previewFrame.srcdoc = wrapHTML(html);
+      previewFrame.srcdoc = buildPreviewHTML(html);
       updateStatus(label);
     }
 
@@ -623,180 +624,145 @@ ${html}
     wideModeBtn.addEventListener('click', () => updateSaveMode('wide'));
 
     newWindowBtn.addEventListener('click', () => {
-      const html = wrapHTML(htmlInput.value);
+      const html = buildPreviewHTML(htmlInput.value);
       const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener');
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     });
 
-    function waitForFrameLoad(frame) {
-      return new Promise((resolve) => {
-        let doneCalled = false;
+    function waitForImages(doc) {
+      const images = Array.from(doc.images || []);
+      if (images.length === 0) return Promise.resolve();
 
+      return new Promise((resolve) => {
+        let loaded = 0;
         const done = () => {
-          if (doneCalled) return;
-          doneCalled = true;
-          setTimeout(resolve, 500);
+          loaded++;
+          if (loaded >= images.length) resolve();
         };
 
-        frame.onload = done;
-
-        try {
-          const doc = frame.contentDocument || frame.contentWindow?.document;
-          if (doc) {
-            if (doc.readyState === 'complete') {
-              done();
-              return;
-            }
-
-            const images = Array.from(doc.images || []);
-            if (images.length === 0) {
-              setTimeout(done, 300);
-              return;
-            }
-
-            let loaded = 0;
-            const check = () => {
-              loaded++;
-              if (loaded >= images.length) done();
-            };
-
-            images.forEach(img => {
-              if (img.complete) {
-                check();
-              } else {
-                img.addEventListener('load', check, { once:true });
-                img.addEventListener('error', check, { once:true });
-              }
-            });
-
-            setTimeout(done, 1200);
-            return;
+        images.forEach((img) => {
+          if (img.complete) {
+            done();
+          } else {
+            img.addEventListener('load', done, { once:true });
+            img.addEventListener('error', done, { once:true });
           }
-        } catch (e) {}
+        });
 
-        setTimeout(done, 600);
+        setTimeout(resolve, 1500);
       });
     }
 
+    function waitForFrameLoad(frame) {
+      return new Promise((resolve) => {
+        const onload = async () => {
+          try {
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            await waitForImages(doc);
+          } catch (e) {}
+          setTimeout(resolve, 350);
+        };
+
+        frame.onload = onload;
+
+        try {
+          const doc = frame.contentDocument || frame.contentWindow?.document;
+          if (doc && doc.readyState === 'complete') {
+            onload();
+          }
+        } catch (e) {
+          setTimeout(resolve, 500);
+        }
+      });
+    }
+
+    async function createCaptureFrame(sourceHTML, targetWidth = null) {
+      const captureFrame = document.createElement('iframe');
+      captureFrame.className = 'capture-frame';
+      if (targetWidth) {
+        captureFrame.style.width = targetWidth + 'px';
+      }
+      document.body.appendChild(captureFrame);
+
+      captureFrame.srcdoc = buildPreviewHTML(sourceHTML);
+      await waitForFrameLoad(captureFrame);
+
+      const doc = captureFrame.contentDocument;
+      const htmlEl = doc.documentElement;
+      const bodyEl = doc.body;
+
+      htmlEl.style.overflow = 'visible';
+      bodyEl.style.overflow = 'visible';
+      htmlEl.style.height = 'auto';
+      bodyEl.style.height = 'auto';
+
+      if (targetWidth) {
+        htmlEl.style.width = targetWidth + 'px';
+        bodyEl.style.width = targetWidth + 'px';
+        bodyEl.style.maxWidth = targetWidth + 'px';
+        bodyEl.style.margin = '0';
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 250));
+
+      const width = targetWidth || Math.max(
+        bodyEl.scrollWidth,
+        bodyEl.offsetWidth,
+        bodyEl.clientWidth,
+        htmlEl.scrollWidth,
+        htmlEl.offsetWidth,
+        htmlEl.clientWidth
+      );
+
+      const height = Math.max(
+        bodyEl.scrollHeight,
+        bodyEl.offsetHeight,
+        bodyEl.clientHeight,
+        htmlEl.scrollHeight,
+        htmlEl.offsetHeight,
+        htmlEl.clientHeight
+      );
+
+      captureFrame.style.height = height + 'px';
+
+      return { captureFrame, doc, bodyEl, width, height };
+    }
+
     async function savePNGByMode(mode) {
-      const originalFrameWidth = previewFrame.style.width;
-      const originalFrameHeight = previewFrame.style.height;
+      let capture = null;
 
       try {
-        await waitForFrameLoad(previewFrame);
+        const targetWidth = mode === 'wide' ? 1200 : null;
+        capture = await createCaptureFrame(htmlInput.value, targetWidth);
 
-        const frameWindow = previewFrame.contentWindow;
-        const frameDoc = previewFrame.contentDocument || frameWindow.document;
-
-        if (!frameDoc || !frameDoc.documentElement || !frameDoc.body) {
-          alert('미리보기가 아직 준비되지 않았습니다.');
-          return;
-        }
-
-        const htmlEl = frameDoc.documentElement;
-        const bodyEl = frameDoc.body;
-
-        const oldHtmlOverflow = htmlEl.style.overflow;
-        const oldBodyOverflow = bodyEl.style.overflow;
-        const oldHtmlHeight = htmlEl.style.height;
-        const oldBodyHeight = bodyEl.style.height;
-        const oldHtmlWidth = htmlEl.style.width;
-        const oldBodyWidth = bodyEl.style.width;
-        const oldBodyMaxWidth = bodyEl.style.maxWidth;
-        const oldBodyMargin = bodyEl.style.margin;
-
-        htmlEl.style.overflow = 'visible';
-        bodyEl.style.overflow = 'visible';
-        htmlEl.style.height = 'auto';
-        bodyEl.style.height = 'auto';
-        htmlEl.style.width = 'auto';
-        bodyEl.style.width = 'auto';
-
-        const naturalWidth = Math.max(
-          bodyEl.scrollWidth,
-          bodyEl.offsetWidth,
-          bodyEl.clientWidth,
-          htmlEl.scrollWidth,
-          htmlEl.offsetWidth,
-          htmlEl.clientWidth
-        );
-
-        const naturalHeight = Math.max(
-          bodyEl.scrollHeight,
-          bodyEl.offsetHeight,
-          bodyEl.clientHeight,
-          htmlEl.scrollHeight,
-          htmlEl.offsetHeight,
-          htmlEl.clientHeight
-        );
-
-        let captureWidth = naturalWidth;
-        let captureHeight = naturalHeight;
-
-        if (mode === 'wide') {
-          const targetWidth = 1200;
-          htmlEl.style.width = targetWidth + 'px';
-          bodyEl.style.width = targetWidth + 'px';
-          bodyEl.style.maxWidth = targetWidth + 'px';
-          bodyEl.style.margin = '0';
-
-          previewFrame.style.width = targetWidth + 'px';
-          previewFrame.style.height = 'auto';
-
-          await new Promise(resolve => setTimeout(resolve, 300));
-
-          captureWidth = targetWidth;
-          captureHeight = Math.max(
-            bodyEl.scrollHeight,
-            bodyEl.offsetHeight,
-            bodyEl.clientHeight,
-            htmlEl.scrollHeight,
-            htmlEl.offsetHeight,
-            htmlEl.clientHeight
-          );
-        } else {
-          previewFrame.style.width = naturalWidth + 'px';
-          previewFrame.style.height = naturalHeight + 'px';
-          await new Promise(resolve => setTimeout(resolve, 250));
-
-          captureWidth = naturalWidth;
-          captureHeight = naturalHeight;
-        }
-
-        const canvas = await html2canvas(bodyEl, {
+        const canvas = await html2canvas(capture.bodyEl, {
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           scale: 2,
-          width: captureWidth,
-          height: captureHeight,
-          windowWidth: captureWidth,
-          windowHeight: captureHeight,
+          width: capture.width,
+          height: capture.height,
+          windowWidth: capture.width,
+          windowHeight: capture.height,
           scrollX: 0,
           scrollY: 0
         });
 
         const link = document.createElement('a');
-        link.download = mode === 'wide' ? 'archive-preview-wide.png' : 'archive-preview.png';
+        link.download = mode === 'wide'
+          ? 'archive-preview-wide.png'
+          : 'archive-preview.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
-
-        htmlEl.style.overflow = oldHtmlOverflow;
-        bodyEl.style.overflow = oldBodyOverflow;
-        htmlEl.style.height = oldHtmlHeight;
-        bodyEl.style.height = oldBodyHeight;
-        htmlEl.style.width = oldHtmlWidth;
-        bodyEl.style.width = oldBodyWidth;
-        bodyEl.style.maxWidth = oldBodyMaxWidth;
-        bodyEl.style.margin = oldBodyMargin;
       } catch (error) {
         console.error(error);
-        alert('PNG 저장 중 오류가 발생했습니다. 외부 리소스가 많은 HTML은 일부가 다르게 저장될 수 있습니다.');
+        alert('PNG 저장 중 오류가 발생했습니다.');
       } finally {
-        previewFrame.style.width = originalFrameWidth;
-        previewFrame.style.height = originalFrameHeight;
+        if (capture && capture.captureFrame) {
+          capture.captureFrame.remove();
+        }
       }
     }
 
