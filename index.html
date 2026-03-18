@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>HTML → PNG 변환기</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #111;
+  color: white;
+  display: flex;
+  height: 100vh;
+}
+
+.left {
+  width: 40%;
+  padding: 20px;
+  box-sizing: border-box;
+  border-right: 1px solid #333;
+}
+
+.right {
+  flex: 1;
+  background: #fff;
+  color: black;
+  overflow: auto;
+}
+
+textarea {
+  width: 100%;
+  height: 200px;
+  background: #222;
+  color: #0f0;
+  border: none;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px;
+  width: 100%;
+  background: #444;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #666;
+}
+
+#preview {
+  padding: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="left">
+
+<h2>HTML 입력</h2>
+
+<textarea id="htmlInput"><h1 style="color:red;">테스트</h1></textarea>
+
+<input type="file" id="fileInput">
+
+<button onclick="applyHTML()">미리보기 적용</button>
+<button onclick="savePNG()">PNG 저장</button>
+
+</div>
+
+<div class="right" id="preview"></div>
+
+<script>
+function applyHTML() {
+  const html = document.getElementById('htmlInput').value;
+  document.getElementById('preview').innerHTML = html;
+}
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    document.getElementById('htmlInput').value = e.target.result;
+    applyHTML();
+  };
+
+  reader.readAsText(file);
+});
+
+function savePNG() {
+  html2canvas(document.getElementById("preview")).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "capture.png";
+    link.href = canvas.toDataURL();
+    link.click();
+  });
+}
+</script>
+
+</body>
+</html>
