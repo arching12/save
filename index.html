@@ -1,556 +1,75 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HTML → PNG 변환기</title>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f1020;
-      --bg2: #17192f;
-      --panel: rgba(255,255,255,0.08);
-      --panel-2: rgba(255,255,255,0.06);
-      --line: rgba(255,255,255,0.12);
-      --text: #f7f8ff;
-      --muted: #b5bddf;
-      --accent: #a995ff;
-      --accent2: #8fbaff;
-      --danger: #ff8fbc;
-      --radius-xl: 28px;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --shadow: 0 22px 60px rgba(0,0,0,0.35);
-    }
+<meta charset="UTF-8">
+<title>HTML Preview</title>
 
-    * { box-sizing: border-box; }
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(169,149,255,0.16), transparent 28%),
-        radial-gradient(circle at top right, rgba(143,186,255,0.16), transparent 28%),
-        linear-gradient(135deg, var(--bg), var(--bg2));
-    }
+<style>
+body {
+  background: #eee;
+  padding: 40px;
+}
 
-    body { padding: 24px; }
+/* 캡처 영역 */
+#capture {
+  background: white;
+  padding: 30px;
+  width: 900px;
+  margin: auto;
+}
 
-    .wrap {
-      max-width: 1580px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 420px 1fr;
-      gap: 22px;
-      min-height: calc(100vh - 48px);
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-    }
-
-    .sidebar {
-      border-radius: var(--radius-xl);
-      padding: 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      width: fit-content;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      color: var(--muted);
-      font-size: 12px;
-      letter-spacing: .08em;
-    }
-
-    h1 {
-      margin: 12px 0 10px;
-      font-size: clamp(30px, 3vw, 42px);
-      line-height: 1.08;
-      letter-spacing: -0.04em;
-    }
-
-    .intro {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.8;
-    }
-
-    .box {
-      background: var(--panel-2);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: var(--radius-lg);
-      padding: 16px;
-    }
-
-    .box h2 {
-      margin: 0 0 10px;
-      font-size: 14px;
-      letter-spacing: .04em;
-    }
-
-    .file-label {
-      display: block;
-      width: 100%;
-      padding: 14px 16px;
-      border-radius: var(--radius-md);
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.1);
-      cursor: pointer;
-      transition: .2s ease;
-      font-size: 14px;
-    }
-
-    .file-label:hover {
-      background: rgba(255,255,255,0.12);
-      transform: translateY(-1px);
-    }
-
-    .file-label input { display: none; }
-
-    .file-name {
-      margin-top: 10px;
-      font-size: 12px;
-      color: var(--muted);
-      word-break: break-all;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 360px;
-      resize: vertical;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: var(--radius-md);
-      background: rgba(9,10,22,0.55);
-      color: var(--text);
-      padding: 16px;
-      font-size: 13px;
-      line-height: 1.7;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    }
-
-    .btn-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    button {
-      appearance: none;
-      border: 0;
-      border-radius: 999px;
-      padding: 13px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: .2s ease;
-      color: var(--text);
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      background: rgba(255,255,255,0.14);
-    }
-
-    .primary {
-      color: #111425;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border: none;
-    }
-
-    .danger {
-      background: linear-gradient(135deg, rgba(255,143,188,0.95), rgba(255,183,143,0.95));
-      color: #1d1220;
-      font-weight: 700;
-      border: none;
-    }
-
-    .viewer {
-      border-radius: 34px;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      min-height: calc(100vh - 48px);
-    }
-
-    .viewer-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      padding: 6px 6px 8px;
-    }
-
-    .viewer-top h2 {
-      margin: 0 0 8px;
-      font-size: clamp(22px, 2.4vw, 34px);
-      line-height: 1.1;
-      letter-spacing: -0.03em;
-    }
-
-    .viewer-top p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.7;
-    }
-
-    .status {
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: var(--muted);
-      font-size: 12px;
-      max-width: 100%;
-      word-break: break-all;
-    }
-
-    .preview-shell {
-      flex: 1;
-      border-radius: 24px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.04);
-      min-height: 780px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .preview-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 16px;
-      background: rgba(10,11,24,0.3);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-
-    .dots {
-      display: flex;
-      gap: 8px;
-    }
-
-    .dots i {
-      display: block;
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.35);
-    }
-
-    .preview-path {
-      color: var(--muted);
-      font-size: 12px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    iframe {
-      width: 100%;
-      flex: 1;
-      border: 0;
-      background: #ffffff;
-      display: block;
-      min-height: 720px;
-    }
-
-    .foot {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.7;
-    }
-
-    @media (max-width: 1180px) {
-      .wrap {
-        grid-template-columns: 1fr;
-      }
-      .viewer { min-height: auto; }
-      .preview-shell { min-height: 68vh; }
-    }
-
-    @media (max-width: 720px) {
-      body { padding: 14px; }
-      .sidebar, .viewer { border-radius: 24px; }
-      .sidebar { padding: 20px; }
-      .viewer { padding: 12px; }
-      .btn-row { grid-template-columns: 1fr; }
-      textarea { min-height: 280px; }
-      .preview-shell { border-radius: 18px; min-height: 64vh; }
-    }
-  </style>
+/* 버튼 */
+button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 10px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+</style>
 </head>
+
 <body>
-  <div class="wrap">
-    <aside class="panel sidebar">
-      <div>
-        <div class="eyebrow">HTML TO PNG TOOL</div>
-        <h1>HTML을 올리거나<br>직접 적고<br>PNG로 저장</h1>
-        <p class="intro">HTML 파일을 업로드하거나 직접 입력한 뒤 미리보기하고, 전체 길이를 기준으로 PNG 저장할 수 있는 버전입니다.</p>
-      </div>
 
-      <section class="box">
-        <h2>HTML 파일 업로드</h2>
-        <label class="file-label">
-          html / htm / txt 파일 선택
-          <input type="file" id="fileInput" accept=".html,.htm,.txt" />
-        </label>
-        <div class="file-name" id="fileName">선택된 파일 없음</div>
-      </section>
+<button onclick="savePNG()">PNG 저장</button>
 
-      <section class="box">
-        <h2>HTML 직접 입력</h2>
-        <textarea id="htmlInput"><!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <style>
-    body {
-      margin: 0;
-      padding: 40px;
-      background: linear-gradient(180deg, #f7f8ff, #eef2ff);
-      font-family: Pretendard, sans-serif;
-    }
-    .card {
-      max-width: 920px;
-      margin: 0 auto;
-      background: #fff;
-      border: 1px solid #e7eaf3;
-      border-radius: 24px;
-      padding: 30px;
-      box-shadow: 0 12px 36px rgba(0,0,0,0.08);
-    }
-    h1 {
-      margin: 0 0 12px;
-      color: #2f355c;
-      font-size: 34px;
-    }
-    p {
-      margin: 0;
-      color: #66708f;
-      line-height: 1.8;
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>샘플 HTML</h1>
-    <p>여기에 원하는 HTML을 넣고 적용하면 오른쪽에 미리보기가 표시됩니다.</p>
-  </div>
-</body>
-</html></textarea>
+<div id="capture">
 
-        <div class="btn-row">
-          <button class="primary" id="applyBtn">미리보기 적용</button>
-          <button id="sampleBtn">샘플로 되돌리기</button>
-        </div>
-      </section>
+<!-- 🔥 여기부터 네 기존 HTML 넣기 -->
 
-      <section class="box">
-        <h2>저장</h2>
-        <div class="btn-row">
-          <button class="danger" id="saveBtn">PNG 저장</button>
-          <button id="newWindowBtn">새 창으로 보기</button>
-        </div>
-      </section>
+<div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; font-family: sans-serif;">
+<h3 style="color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 10px;">ARCH 블라인드</h3>
 
-      <p class="foot">외부 이미지, 외부 폰트, 외부 스크립트가 많은 HTML은 일부 요소가 다르게 저장될 수 있습니다. 하지만 이번 버전은 전체 높이 기준 저장으로 잘림 현상을 최대한 줄였습니다.</p>
-    </aside>
+<!-- 기존 내용 그대로 유지 -->
+<!-- 👇 너가 준 HTML 그대로 넣으면 됨 -->
 
-    <main class="panel viewer">
-      <div class="viewer-top">
-        <div>
-          <div class="eyebrow">LIVE PREVIEW</div>
-          <h2>현재 HTML 미리보기</h2>
-          <p>왼쪽에서 파일을 올리거나 HTML을 입력한 뒤 적용하면 이 영역에 표시됩니다.</p>
-        </div>
-        <div class="status" id="statusText">preview://sample</div>
-      </div>
+</div>
 
-      <div class="preview-shell">
-        <div class="preview-bar">
-          <div class="dots"><i></i><i></i><i></i></div>
-          <div class="preview-path" id="previewPath">preview://sample</div>
-        </div>
-        <iframe id="previewFrame" title="HTML Preview"></iframe>
-      </div>
-    </main>
-  </div>
+</div>
 
-  <script>
-    const fileInput = document.getElementById('fileInput');
-    const fileName = document.getElementById('fileName');
-    const htmlInput = document.getElementById('htmlInput');
-    const applyBtn = document.getElementById('applyBtn');
-    const sampleBtn = document.getElementById('sampleBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const newWindowBtn = document.getElementById('newWindowBtn');
-    const previewFrame = document.getElementById('previewFrame');
-    const previewPath = document.getElementById('previewPath');
-    const statusText = document.getElementById('statusText');
+<script>
+function savePNG() {
+  const element = document.getElementById("capture");
 
-    const sampleHTML = htmlInput.value;
+  html2canvas(element, {
+    useCORS: true,
+    scrollY: -window.scrollY,
+    windowWidth: document.body.scrollWidth,
+    windowHeight: document.body.scrollHeight
+  }).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "capture.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+}
+</script>
 
-    function updateStatus(text) {
-      previewPath.textContent = text;
-      statusText.textContent = text;
-    }
-
-    function renderHTML(html, label = 'preview://manual') {
-      previewFrame.srcdoc = html;
-      updateStatus(label);
-    }
-
-    applyBtn.addEventListener('click', () => {
-      renderHTML(htmlInput.value, 'preview://manual-input');
-    });
-
-    sampleBtn.addEventListener('click', () => {
-      htmlInput.value = sampleHTML;
-      renderHTML(sampleHTML, 'preview://sample');
-      fileName.textContent = '선택된 파일 없음';
-    });
-
-    fileInput.addEventListener('change', (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      fileName.textContent = file.name;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = reader.result;
-        htmlInput.value = text;
-        renderHTML(text, 'file://' + file.name);
-      };
-      reader.readAsText(file, 'utf-8');
-    });
-
-    newWindowBtn.addEventListener('click', () => {
-      const html = htmlInput.value;
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener');
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    });
-
-    function waitForFrameLoad(frame) {
-      return new Promise((resolve) => {
-        const done = () => {
-          setTimeout(resolve, 300);
-        };
-
-        frame.onload = done;
-
-        const doc = frame.contentDocument || frame.contentWindow?.document;
-        if (doc && doc.readyState === 'complete') {
-          done();
-        }
-      });
-    }
-
-    async function saveFullPNG() {
-      try {
-        await waitForFrameLoad(previewFrame);
-
-        const frameWindow = previewFrame.contentWindow;
-        const frameDoc = previewFrame.contentDocument || frameWindow.document;
-
-        if (!frameDoc || !frameDoc.documentElement || !frameDoc.body) {
-          alert('미리보기가 아직 준비되지 않았습니다.');
-          return;
-        }
-
-        const htmlEl = frameDoc.documentElement;
-        const bodyEl = frameDoc.body;
-
-        const oldHtmlOverflow = htmlEl.style.overflow;
-        const oldBodyOverflow = bodyEl.style.overflow;
-        const oldHtmlHeight = htmlEl.style.height;
-        const oldBodyHeight = bodyEl.style.height;
-
-        htmlEl.style.overflow = 'visible';
-        bodyEl.style.overflow = 'visible';
-        htmlEl.style.height = 'auto';
-        bodyEl.style.height = 'auto';
-
-        const fullWidth = Math.max(
-          bodyEl.scrollWidth,
-          bodyEl.offsetWidth,
-          htmlEl.clientWidth,
-          htmlEl.scrollWidth,
-          htmlEl.offsetWidth
-        );
-
-        const fullHeight = Math.max(
-          bodyEl.scrollHeight,
-          bodyEl.offsetHeight,
-          htmlEl.clientHeight,
-          htmlEl.scrollHeight,
-          htmlEl.offsetHeight
-        );
-
-        const originalFrameWidth = previewFrame.style.width;
-        const originalFrameHeight = previewFrame.style.height;
-
-        previewFrame.style.width = fullWidth + 'px';
-        previewFrame.style.height = fullHeight + 'px';
-
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        const canvas = await html2canvas(bodyEl, {
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          scale: 2,
-          width: fullWidth,
-          height: fullHeight,
-          windowWidth: fullWidth,
-          windowHeight: fullHeight,
-          scrollX: 0,
-          scrollY: 0
-        });
-
-        const link = document.createElement('a');
-        link.download = 'html-preview-full.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-
-        previewFrame.style.width = originalFrameWidth;
-        previewFrame.style.height = originalFrameHeight;
-
-        htmlEl.style.overflow = oldHtmlOverflow;
-        bodyEl.style.overflow = oldBodyOverflow;
-        htmlEl.style.height = oldHtmlHeight;
-        bodyEl.style.height = oldBodyHeight;
-      } catch (error) {
-        console.error(error);
-        alert('PNG 저장 중 오류가 발생했습니다. 외부 리소스가 많은 HTML은 일부가 다르게 저장될 수 있습니다.');
-      }
-    }
-
-    saveBtn.addEventListener('click', saveFullPNG);
-
-    renderHTML(sampleHTML, 'preview://sample');
-  </script>
 </body>
 </html>
