@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Archive HTML Preview Tool</title>
+  <title>PNG 파일 저장 사이트</title>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     :root{
@@ -222,14 +222,7 @@
     }
 
     .status{
-      padding:10px 14px;
-      border-radius:999px;
-      background:#f6f6f4;
-      border:1px solid var(--line);
-      color:var(--muted);
-      font-size:12px;
-      max-width:100%;
-      word-break:break-all;
+      display:none;
     }
 
     .preview-shell{
@@ -267,11 +260,7 @@
     }
 
     .preview-path{
-      color:var(--muted);
-      font-size:12px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      display:none;
     }
 
     iframe{
@@ -284,9 +273,7 @@
     }
 
     .foot{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.75;
+      display:none;
     }
 
     @media (max-width:1180px){
@@ -310,8 +297,8 @@
   <div class="wrap">
     <aside class="panel sidebar">
       <div>
-        <div class="eyebrow">archive html tool</div>
-        <h1>HTML을 불러와<br>미리보고<br>PNG로 저장</h1>
+        <div class="eyebrow">Preview</div>
+        <h1>PNG 파일 저장 사이트</h1>
         <p class="intro">HTML 파일 업로드와 직접 붙여넣기를 지원하는 미리보기 도구입니다. 오른쪽에는 사용자가 넣은 HTML이 그대로 렌더링되며, 현재 결과를 PNG로 저장할 수 있습니다.</p>
       </div>
 
@@ -374,23 +361,21 @@
         </div>
       </section>
 
-      <p class="foot">왼쪽은 도구 화면이고, 오른쪽 미리보기에는 사용자가 넣은 HTML만 표시됩니다. 업로드한 파일이나 붙여넣은 HTML은 자동으로 원본 형태를 유지합니다.</p>
+      <p class="foot"></p>
     </aside>
 
     <main class="panel viewer">
       <div class="viewer-top">
         <div>
-          <div class="eyebrow">live preview</div>
-          <h2>현재 HTML 미리보기</h2>
+          <h2>HTML 미리보기 버전</h2>
           <p>왼쪽에서 파일을 불러오거나 코드를 수정한 뒤 적용하면 이 영역에 바로 반영됩니다.</p>
         </div>
-        <div class="status" id="statusText">preview://sample</div>
       </div>
 
       <div class="preview-shell">
         <div class="preview-bar">
           <div class="dots"><i></i><i></i><i></i></div>
-          <div class="preview-path" id="previewPath">preview://sample</div>
+          <div class="preview-path" id="previewPath"></div>
         </div>
         <iframe id="previewFrame" title="HTML Preview"></iframe>
       </div>
@@ -407,13 +392,11 @@
     const newWindowBtn = document.getElementById('newWindowBtn');
     const previewFrame = document.getElementById('previewFrame');
     const previewPath = document.getElementById('previewPath');
-    const statusText = document.getElementById('statusText');
 
     const sampleHTML = htmlInput.value;
 
     function updateStatus(text) {
-      previewPath.textContent = text;
-      statusText.textContent = text;
+      if (previewPath) previewPath.textContent = text || '';
     }
 
     function wrapHTML(html){
@@ -445,18 +428,18 @@ ${html}
 </html>`;
     }
 
-    function renderHTML(html, label = 'preview://manual') {
+    function renderHTML(html, label = '') {
       previewFrame.srcdoc = wrapHTML(html);
       updateStatus(label);
     }
 
     applyBtn.addEventListener('click', () => {
-      renderHTML(htmlInput.value, 'preview://manual-input');
+      renderHTML(htmlInput.value, '');
     });
 
     sampleBtn.addEventListener('click', () => {
       htmlInput.value = sampleHTML;
-      renderHTML(sampleHTML, 'preview://sample');
+      renderHTML(sampleHTML, '');
       fileName.textContent = '선택된 파일 없음';
     });
 
@@ -469,7 +452,7 @@ ${html}
       reader.onload = () => {
         const text = reader.result;
         htmlInput.value = text;
-        renderHTML(text, 'file://' + file.name);
+        renderHTML(text, '');
       };
       reader.readAsText(file, 'utf-8');
     });
@@ -574,7 +557,7 @@ ${html}
 
     saveBtn.addEventListener('click', saveFullPNG);
 
-    renderHTML(sampleHTML, 'preview://sample');
+    renderHTML(sampleHTML, '');
   </script>
 </body>
 </html>
