@@ -222,10 +222,6 @@
       line-height:1.7;
     }
 
-    .status{
-      display:none;
-    }
-
     .preview-shell{
       flex:1;
       border-radius:22px;
@@ -258,10 +254,6 @@
       height:11px;
       border-radius:50%;
       background:#a9b0b9;
-    }
-
-    .preview-path{
-      display:none;
     }
 
     iframe{
@@ -397,7 +389,6 @@
       <div class="preview-shell">
         <div class="preview-bar">
           <div class="dots"><i></i><i></i><i></i></div>
-          <div class="preview-path" id="previewPath"></div>
         </div>
         <iframe id="previewFrame" title="HTML Preview"></iframe>
       </div>
@@ -413,19 +404,18 @@
     const saveBtn = document.getElementById('saveBtn');
     const newWindowBtn = document.getElementById('newWindowBtn');
     const previewFrame = document.getElementById('previewFrame');
-    const previewPath = document.getElementById('previewPath');
 
     const sampleHTML = htmlInput.value;
+    const DESKTOP_CAPTURE_WIDTH = 1200;
 
-    function updateStatus(text) {
-      if (previewPath) previewPath.textContent = text || '';
+    function isFullHTML(html) {
+      const trimmed = html.trim().toLowerCase();
+      return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html');
     }
 
     function wrapHTML(html) {
-      const trimmed = html.trim().toLowerCase();
-      if (trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')) {
-        return html;
-      }
+      if (isFullHTML(html)) return html;
+
       return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -450,18 +440,17 @@ ${html}
 </html>`;
     }
 
-    function renderHTML(html, label = '') {
+    function renderHTML(html) {
       previewFrame.srcdoc = wrapHTML(html);
-      updateStatus(label);
     }
 
     applyBtn.addEventListener('click', () => {
-      renderHTML(htmlInput.value, '');
+      renderHTML(htmlInput.value);
     });
 
     sampleBtn.addEventListener('click', () => {
       htmlInput.value = sampleHTML;
-      renderHTML(sampleHTML, '');
+      renderHTML(sampleHTML);
       fileName.textContent = '선택된 파일 없음';
     });
 
@@ -474,7 +463,7 @@ ${html}
       reader.onload = () => {
         const text = reader.result;
         htmlInput.value = text;
-        renderHTML(text, '');
+        renderHTML(text);
       };
       reader.readAsText(file, 'utf-8');
     });
@@ -489,7 +478,7 @@ ${html}
 
     function waitForFrameLoad(frame) {
       return new Promise((resolve) => {
-        const done = () => setTimeout(resolve, 350);
+        const done = () => setTimeout(resolve, 400);
         frame.onload = done;
 
         const doc = frame.contentDocument || frame.contentWindow?.document;
@@ -501,14 +490,85 @@ ${html}
       return window.innerWidth <= 768;
     }
 
+    function makeDesktopCaptureDocument(originalHTML) {
+      const isFull = isFullHTML(originalHTML);
+
+      if (isFull) {
+        if (/<meta[^>]*name=["']viewport["']/i.test(originalHTML)) {
+          return originalHTML.replace(
+            /<meta[^>]*name=["']viewport["'][^>]*>/i,
+            `<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0">`
+          );
+        }
+
+        return originalHTML.replace(
+          /<head([^>]*)>/i,
+          `<head$1>
+<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0">`
+        );
+      }
+
+      return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=${DESKTOP_CAPTURE_WIDTH}, initial-scale=1.0" />
+<title>Desktop Capture</title>
+<style>
+  html,body{
+    margin:0;
+    padding:0;
+    width:${DESKTOP_CAPTURE_WIDTH}px;
+    min-width:${DESKTOP_CAPTURE_WIDTH}px;
+    background:#ffffff;
+  }
+  body{
+    padding:24px;
+    box-sizing:border-box;
+  }
+  #capture-root{
+    width:${DESKTOP_CAPTURE_WIDTH - 48}px;
+  }
+</style>
+</head>
+<body>
+  <div id="capture-root">
+    ${originalHTML}
+  </div>
+</body>
+</html>`;
+    }
+
+    async function buildCaptureFrameHTML() {
+      const originalHTML = htmlInput.value;
+
+      if (!isMobileDevice()) {
+        return wrapHTML(originalHTML);
+      }
+
+      return makeDesktopCaptureDocument(originalHTML);
+    }
+
     async function saveFullPNG() {
       try {
-        await waitForFrameLoad(previewFrame);
+        const captureHTML = await buildCaptureFrameHTML();
 
-        const frameWindow = previewFrame.contentWindow;
-        const frameDoc = previewFrame.contentDocument || frameWindow.document;
+        const tempFrame = document.createElement('iframe');
+        tempFrame.style.position = 'fixed';
+        tempFrame.style.left = '-99999px';
+        tempFrame.style.top = '0';
+        tempFrame.style.width = isMobileDevice() ? DESKTOP_CAPTURE_WIDTH + 'px' : '1200px';
+        tempFrame.style.height = '10px';
+        tempFrame.style.opacity = '0';
+        tempFrame.style.pointerEvents = 'none';
+        document.body.appendChild(tempFrame);
 
+        tempFrame.srcdoc = captureHTML;
+        await waitForFrameLoad(tempFrame);
+
+        const frameDoc = tempFrame.contentDocument || tempFrame.contentWindow.document;
         if (!frameDoc || !frameDoc.documentElement || !frameDoc.body) {
+          document.body.removeChild(tempFrame);
           alert('미리보기가 아직 준비되지 않았습니다.');
           return;
         }
@@ -520,23 +580,28 @@ ${html}
         const oldBodyOverflow = bodyEl.style.overflow;
         const oldHtmlHeight = htmlEl.style.height;
         const oldBodyHeight = bodyEl.style.height;
+        const oldHtmlWidth = htmlEl.style.width;
+        const oldBodyWidth = bodyEl.style.width;
 
         htmlEl.style.overflow = 'visible';
         bodyEl.style.overflow = 'visible';
         htmlEl.style.height = 'auto';
         bodyEl.style.height = 'auto';
 
-        const naturalWidth = Math.max(
-          bodyEl.scrollWidth,
-          bodyEl.offsetWidth,
-          htmlEl.clientWidth,
-          htmlEl.scrollWidth,
-          htmlEl.offsetWidth
-        );
+        if (isMobileDevice()) {
+          htmlEl.style.width = DESKTOP_CAPTURE_WIDTH + 'px';
+          bodyEl.style.width = DESKTOP_CAPTURE_WIDTH + 'px';
+        }
 
         const fullWidth = isMobileDevice()
-          ? Math.max(1200, naturalWidth)
-          : naturalWidth;
+          ? DESKTOP_CAPTURE_WIDTH
+          : Math.max(
+              bodyEl.scrollWidth,
+              bodyEl.offsetWidth,
+              htmlEl.clientWidth,
+              htmlEl.scrollWidth,
+              htmlEl.offsetWidth
+            );
 
         const fullHeight = Math.max(
           bodyEl.scrollHeight,
@@ -546,13 +611,10 @@ ${html}
           htmlEl.offsetHeight
         );
 
-        const originalFrameWidth = previewFrame.style.width;
-        const originalFrameHeight = previewFrame.style.height;
+        tempFrame.style.width = fullWidth + 'px';
+        tempFrame.style.height = fullHeight + 'px';
 
-        previewFrame.style.width = fullWidth + 'px';
-        previewFrame.style.height = fullHeight + 'px';
-
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 250));
 
         const canvas = await html2canvas(bodyEl, {
           useCORS: true,
@@ -572,13 +634,14 @@ ${html}
         link.href = canvas.toDataURL('image/png');
         link.click();
 
-        previewFrame.style.width = originalFrameWidth;
-        previewFrame.style.height = originalFrameHeight;
-
         htmlEl.style.overflow = oldHtmlOverflow;
         bodyEl.style.overflow = oldBodyOverflow;
         htmlEl.style.height = oldHtmlHeight;
         bodyEl.style.height = oldBodyHeight;
+        htmlEl.style.width = oldHtmlWidth;
+        bodyEl.style.width = oldBodyWidth;
+
+        document.body.removeChild(tempFrame);
       } catch (error) {
         console.error(error);
         alert('PNG 저장 중 오류가 발생했습니다. 외부 리소스가 많은 HTML은 일부가 다르게 저장될 수 있습니다.');
@@ -587,7 +650,7 @@ ${html}
 
     saveBtn.addEventListener('click', saveFullPNG);
 
-    renderHTML(sampleHTML, '');
+    renderHTML(sampleHTML);
   </script>
 </body>
 </html>
