@@ -15,9 +15,6 @@
       --line-strong:#bcc4cc;
       --text:#222831;
       --muted:#69707c;
-      --deep:#2f3c4c;
-      --accent:#60758d;
-      --accent-soft:#e7edf2;
       --shadow:0 14px 34px rgba(22, 28, 36, .07);
       --radius-xl:24px;
       --radius-lg:18px;
@@ -36,7 +33,9 @@
         linear-gradient(180deg, var(--bg), var(--bg2));
     }
 
-    body{padding:24px;}
+    body{
+      padding:24px;
+    }
 
     .wrap{
       max-width:1600px;
@@ -136,7 +135,9 @@
       transform:translateY(-1px);
     }
 
-    .file-label input{display:none;}
+    .file-label input{
+      display:none;
+    }
 
     .file-name{
       margin-top:10px;
@@ -277,19 +278,40 @@
     }
 
     @media (max-width:1180px){
-      .wrap{grid-template-columns:1fr;}
-      .viewer{min-height:auto;}
-      .preview-shell{min-height:68vh;}
+      .wrap{
+        grid-template-columns:1fr;
+      }
+      .viewer{
+        min-height:auto;
+      }
+      .preview-shell{
+        min-height:68vh;
+      }
     }
 
     @media (max-width:720px){
-      body{padding:14px;}
-      .sidebar,.viewer{border-radius:22px;}
-      .sidebar{padding:20px;}
-      .viewer{padding:12px;}
-      .btn-row{grid-template-columns:1fr;}
-      textarea{min-height:280px;}
-      .preview-shell{border-radius:18px;min-height:64vh;}
+      body{
+        padding:14px;
+      }
+      .sidebar,.viewer{
+        border-radius:22px;
+      }
+      .sidebar{
+        padding:20px;
+      }
+      .viewer{
+        padding:12px;
+      }
+      .btn-row{
+        grid-template-columns:1fr;
+      }
+      textarea{
+        min-height:280px;
+      }
+      .preview-shell{
+        border-radius:18px;
+        min-height:64vh;
+      }
     }
   </style>
 </head>
@@ -399,7 +421,7 @@
       if (previewPath) previewPath.textContent = text || '';
     }
 
-    function wrapHTML(html){
+    function wrapHTML(html) {
       const trimmed = html.trim().toLowerCase();
       if (trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')) {
         return html;
@@ -475,6 +497,10 @@ ${html}
       });
     }
 
+    function isMobileDevice() {
+      return window.innerWidth <= 768;
+    }
+
     async function saveFullPNG() {
       try {
         await waitForFrameLoad(previewFrame);
@@ -500,13 +526,17 @@ ${html}
         htmlEl.style.height = 'auto';
         bodyEl.style.height = 'auto';
 
-        const fullWidth = Math.max(
+        const naturalWidth = Math.max(
           bodyEl.scrollWidth,
           bodyEl.offsetWidth,
           htmlEl.clientWidth,
           htmlEl.scrollWidth,
           htmlEl.offsetWidth
         );
+
+        const fullWidth = isMobileDevice()
+          ? Math.max(1200, naturalWidth)
+          : naturalWidth;
 
         const fullHeight = Math.max(
           bodyEl.scrollHeight,
